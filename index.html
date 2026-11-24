@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CineMatch — Recomendador de Filmes e Séries</title>
+  <meta name="description" content="CineMatch recomenda filmes e séries de acordo com seu humor, seus gêneros favoritos, sua faixa etária e o tempo que você tem disponível.">
+  <meta name="theme-color" content="#0d0d12">
+  <meta name="color-scheme" content="dark light">
+
+  <!-- Open Graph: prévia bonita ao compartilhar o link -->
+  <meta property="og:title" content="CineMatch — O que vamos assistir hoje?">
+  <meta property="og:description" content="Recomendações de filmes e séries pelo seu humor, gosto e tempo disponível.">
+  <meta property="og:type" content="website">
+
+  <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/images/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Aplica o tema salvo ANTES de desenhar a página (evita "piscar" claro/escuro) -->
+  <script>
+    (function () {
+      try {
+        var saved = JSON.parse(localStorage.getItem('cinematch:v1:theme'));
+        var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+
+  <!-- Scripts da aplicação (defer: executam após o HTML ser lido, na ordem abaixo) -->
+  <script src="js/movies.js" defer></script>
+  <script src="js/storage.js" defer></script>
+  <script src="js/api.js" defer></script>
+  <script src="js/recommender.js" defer></script>
+  <script src="js/ui.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <!-- Ícones SVG reutilizáveis (sprite) -->
+  <svg xmlns="http://www.w3.org/2000/svg" class="sprite" aria-hidden="true">
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.8 9.8 0 0 0-6.7 2.7L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+    <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4M2 6h1.9c1.5 0 2.9.9 3.6 2.2M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8M18 14l4 4-4 4"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3l14 9-14 9V3z"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+  </svg>
+
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+  <!-- ═════════════ CABEÇALHO ═════════════ -->
+  <header class="topbar">
+    <div class="topbar__inner container">
+      <a class="brand" href="#descobrir" aria-label="CineMatch — página inicial">
+        <img src="assets/images/logo.svg" alt="" width="36" height="36">
+        <span class="brand__name">Cine<strong>Match</strong></span>
+      </a>
+
+      <nav class="main-nav" aria-label="Navegação principal">
+        <ul>
+          <li><a href="#descobrir" data-route="descobrir"><svg class="icon"><use href="#i-sparkles"/></svg><span>Descobrir</span></a></li>
+          <li><a href="#explorar" data-route="explorar"><svg class="icon"><use href="#i-search"/></svg><span>Explorar</span></a></li>
+          <li><a href="#favoritos" data-route="favoritos"><svg class="icon"><use href="#i-heart"/></svg><span>Favoritos</span><span class="nav-count" id="fav-count">0</span></a></li>
+          <li><a href="#historico" data-route="historico"><svg class="icon"><use href="#i-history"/></svg><span>Histórico</span></a></li>
+          <li><a href="#estatisticas" data-route="estatisticas"><svg class="icon"><use href="#i-chart"/></svg><span>Estatísticas</span></a></li>
+        </ul>
+      </nav>
+
+      <div class="topbar__actions">
+        <button class="profile-btn" type="button" id="profile-btn" aria-haspopup="dialog" title="Trocar ou criar perfil">
+          <span class="avatar" id="profile-avatar" aria-hidden="true">🍿</span>
+          <span class="profile-btn__name" id="profile-name">Você</span>
+        </button>
+        <button class="icon-btn" type="button" id="theme-toggle" aria-pressed="false" title="Alternar tema (atalho: T)">
+          <svg class="icon icon--sun"><use href="#i-sun"/></svg>
+          <svg class="icon icon--moon"><use href="#i-moon"/></svg>
+          <span class="sr-only" id="theme-label">Ativar tema claro</span>
+        </button>
+        <button class="icon-btn" type="button" id="settings-btn" aria-haspopup="dialog" title="Ajustes e ajuda (atalho: ?)">
+          <svg class="icon"><use href="#i-settings"/></svg>
+          <span class="sr-only">Ajustes e ajuda</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="conteudo" class="container" tabindex="-1">
+
+    <!-- ═════════════ DESCOBRIR (preferências + recomendações) ═════════════ -->
+    <section class="view" id="view-descobrir" data-view="descobrir" aria-labelledby="descobrir-title">
+      <header class="hero">
+        <p class="hero__eyebrow">Olá, <span id="hero-name">Você</span> <span aria-hidden="true">👋</span></p>
+        <h1 id="descobrir-title">O que vamos assistir <span class="text-gradient">hoje?</span></h1>
+        <p class="hero__lead">Conte como você está e quanto tempo tem. Em segundos o CineMatch escolhe <strong>3 sugestões</strong> sob medida para você.</p>
+      </header>
+
+      <form class="prefs panel" id="prefs-form" novalidate aria-describedby="form-help">
+        <p class="sr-only" id="form-help">Campos marcados com asterisco são obrigatórios.</p>
+
+        <div class="steps" aria-hidden="true">
+          <span class="steps__item" data-step="mood">1. Humor</span>
+          <span class="steps__item" data-step="genres">2. Gêneros</span>
+          <span class="steps__item" data-step="details">3. Detalhes</span>
+        </div>
+
+        <fieldset class="field" id="field-mood">
+          <legend>Como você está se sentindo? <abbr title="obrigatório">*</abbr></legend>
+          <div class="chips chips--mood" id="mood-options"></div>
+          <p class="field__error" id="error-mood" hidden></p>
+        </fieldset>
+
+        <fieldset class="field" id="field-genres">
+          <legend>Gêneros favoritos <abbr title="obrigatório">*</abbr> <span class="field__hint">escolha um ou mais</span></legend>
+          <div class="chips" id="genre-options"></div>
+          <p class="field__error" id="error-genres" hidden></p>
+        </fieldset>
+
+        <div class="field-row">
+          <fieldset class="field">
+            <legend>Quero ver</legend>
+            <div class="segmented" id="type-options"></div>
+          </fieldset>
+
+          <div class="field">
+            <label for="age-select">Faixa etária <abbr title="obrigatório">*</abbr></label>
+            <select id="age-select" name="age" required aria-describedby="age-hint">
+              <option value="">Selecione…</option>
+            </select>
+            <p class="field__hint" id="age-hint">Respeitamos a classificação indicativa.</p>
+            <p class="field__error" id="error-age" hidden></p>
+          </div>
+        </div>
+
+        <fieldset class="field">
+          <legend>Tempo disponível</legend>
+          <div class="chips chips--compact" id="time-options"></div>
+        </fieldset>
+
+        <div class="form-actions">
+          <button class="btn btn--primary btn--lg" type="submit" id="recommend-btn">
+            <svg class="icon"><use href="#i-sparkles"/></svg> Recomendar
+          </button>
+          <button class="btn btn--secondary btn--lg" type="button" id="surprise-btn" title="Sorteia um título bem avaliado para o seu perfil">
+            <svg class="icon"><use href="#i-shuffle"/></svg> Surpreenda-me
+          </button>
+          <button class="btn btn--ghost" type="reset" id="clear-btn">Limpar</button>
+        </div>
+      </form>
+
+      <section class="results" id="results" aria-labelledby="results-title" hidden>
+        <div class="section-head">
+          <div>
+            <h2 id="results-title">Suas sugestões</h2>
+            <p class="section-head__sub" id="results-summary"></p>
+          </div>
+          <button class="btn btn--secondary" type="button" id="reroll-btn">
+            <svg class="icon"><use href="#i-refresh"/></svg> Gerar outras
+          </button>
+        </div>
+        <p class="notice" id="results-notice" role="status" hidden></p>
+        <div class="grid grid--results" id="results-grid" aria-live="polite" aria-busy="false"></div>
+      </section>
+    </section>
+
+    <!-- ═════════════ EXPLORAR (busca local + API) ═════════════ -->
+    <section class="view" id="view-explorar" data-view="explorar" aria-labelledby="explorar-title" hidden>
+      <header class="page-head">
+        <h1 id="explorar-title">Explorar</h1>
+        <p>Pesquise no catálogo do CineMatch e também na internet (Wikipédia e TVMaze).</p>
+      </header>
+
+      <form class="search panel" id="search-form" role="search">
+        <label class="sr-only" for="search-input">Buscar filme ou série</label>
+        <div class="search__box">
+          <svg class="icon"><use href="#i-search"/></svg>
+          <input type="search" id="search-input" name="q" placeholder="Ex.: Interestelar, Dark, comédia…" autocomplete="off" minlength="2">
+          <kbd title="Atalho de teclado">/</kbd>
+        </div>
+        <div class="segmented segmented--small" id="search-type" role="radiogroup" aria-label="Filtrar por tipo"></div>
+        <button class="btn btn--primary" type="submit">Buscar na internet</button>
+      </form>
+
+      <section aria-labelledby="local-title">
+        <div class="section-head">
+          <h2 id="local-title">No catálogo CineMatch <span class="count" id="local-count"></span></h2>
+        </div>
+        <div class="grid" id="local-results" aria-live="polite"></div>
+      </section>
+
+      <section aria-labelledby="online-title" id="online-section" hidden>
+        <div class="section-head">
+          <h2 id="online-title">Na internet <span class="count" id="online-count"></span></h2>
+        </div>
+        <div class="grid" id="online-results" aria-live="polite" aria-busy="false"></div>
+      </section>
+    </section>
+
+    <!-- ═════════════ FAVORITOS ═════════════ -->
+    <section class="view" id="view-favoritos" data-view="favoritos" aria-labelledby="favoritos-title" hidden>
+      <header class="page-head page-head--row">
+        <div>
+          <h1 id="favoritos-title">Meus Favoritos</h1>
+          <p id="favorites-summary">Os títulos que você salvou ficam aqui, mesmo depois de fechar o navegador.</p>
+        </div>
+        <div class="toolbar">
+          <label for="fav-filter" class="sr-only">Filtrar favoritos</label>
+          <select id="fav-filter">
+            <option value="todos">Todos</option>
+            <option value="filme">Só filmes</option>
+            <option value="serie">Só séries</option>
+          </select>
+          <label for="fav-sort" class="sr-only">Ordenar favoritos</label>
+          <select id="fav-sort">
+            <option value="recentes">Mais recentes</option>
+            <option value="nota">Maior nota</option>
+            <option value="titulo">Título (A–Z)</option>
+            <option value="duracao">Menor duração</option>
+          </select>
+        </div>
+      </header>
+      <div class="grid" id="favorites-grid"></div>
+    </section>
+
+    <!-- ═════════════ HISTÓRICO ═════════════ -->
+    <section class="view" id="view-historico" data-view="historico" aria-labelledby="historico-title" hidden>
+      <header class="page-head page-head--row">
+        <div>
+          <h1 id="historico-title">Histórico de recomendações</h1>
+          <p>As últimas 20 sessões de sugestões ficam salvas neste navegador.</p>
+        </div>
+        <button class="btn btn--ghost btn--danger-text" type="button" id="clear-history-btn">
+          <svg class="icon"><use href="#i-trash"/></svg> Limpar histórico
+        </button>
+      </header>
+      <ol class="timeline" id="history-list"></ol>
+    </section>
+
+    <!-- ═════════════ ESTATÍSTICAS ═════════════ -->
+    <section class="view" id="view-estatisticas" data-view="estatisticas" aria-labelledby="estatisticas-title" hidden>
+      <header class="page-head">
+        <h1 id="estatisticas-title">Suas estatísticas</h1>
+        <p>Um retrato do seu gosto, calculado a partir dos favoritos, avaliações e histórico.</p>
+      </header>
+      <div id="stats-content"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <p><strong>CineMatch</strong> — Projeto de TI (Vibe Coding) · Desenvolvimento de Interfaces · UniCEUB</p>
+      <p>Pôsteres e resumos: <a href="https://www.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a> e <a href="https://www.tvmaze.com/api" target="_blank" rel="noopener">TVMaze</a>. Notas aproximadas, apenas para fins educacionais.</p>
+    </div>
+  </footer>
+
+  <!-- ═════════════ DIÁLOGOS ═════════════ -->
+  <dialog class="dialog dialog--details" id="details-dialog" aria-labelledby="details-title">
+    <button class="dialog__close icon-btn" type="button" data-close aria-label="Fechar"><svg class="icon"><use href="#i-x"/></svg></button>
+    <div id="details-content"></div>
+  </dialog>
+
+  <dialog class="dialog" id="profile-dialog" aria-labelledby="profile-title">
+    <button class="dialog__close icon-btn" type="button" data-close aria-label="Fechar"><svg class="icon"><use href="#i-x"/></svg></button>
+    <h2 id="profile-title">Perfis</h2>
+    <p class="dialog__lead">Cada perfil tem favoritos, histórico, avaliações e preferências próprios. Ótimo para dividir o computador com a família.</p>
+    <ul class="profile-list" id="profile-list"></ul>
+    <form class="profile-form" id="profile-form">
+      <h3>Novo perfil</h3>
+      <label for="profile-input">Nome</label>
+      <input type="text" id="profile-input" maxlength="20" placeholder="Ex.: Ana, Família…" required>
+      <fieldset>
+        <legend>Avatar</legend>
+        <div class="avatar-picker" id="avatar-picker"></div>
+      </fieldset>
+      <button class="btn btn--primary" type="submit">Criar perfil</button>
+    </form>
+  </dialog>
+
+  <dialog class="dialog" id="settings-dialog" aria-labelledby="settings-title">
+    <button class="dialog__close icon-btn" type="button" data-close aria-label="Fechar"><svg class="icon"><use href="#i-x"/></svg></button>
+    <h2 id="settings-title">Ajustes e ajuda</h2>
+
+    <section class="settings-block" aria-labelledby="how-title">
+      <h3 id="how-title"><svg class="icon"><use href="#i-help"/></svg> Como funciona a recomendação?</h3>
+      <p>Cada título recebe uma pontuação de 0 a 100% somando: <strong>gêneros</strong> (40%), <strong>humor</strong> (30%), <strong>nota</strong> (15%), <strong>suas avaliações anteriores</strong> (10%) e <strong>tempo disponível</strong> (5%). A classificação indicativa sempre é respeitada. Clique em “Por que indicamos?” em cada sugestão para ver os motivos.</p>
+    </section>
+
+    <section class="settings-block" aria-labelledby="keys-title">
+      <h3 id="keys-title">Atalhos de teclado</h3>
+      <ul class="shortcuts">
+        <li><kbd>1</kbd>–<kbd>5</kbd> Trocar de aba</li>
+        <li><kbd>/</kbd> Buscar</li>
+        <li><kbd>T</kbd> Alternar tema</li>
+        <li><kbd>?</kbd> Abrir esta ajuda</li>
+        <li><kbd>Esc</kbd> Fechar janelas</li>
+      </ul>
+    </section>
+
+    <section class="settings-block" aria-labelledby="data-title">
+      <h3 id="data-title">Seus dados</h3>
+      <p>Tudo fica salvo apenas neste navegador (LocalStorage). Faça um backup para levar seus dados a outro dispositivo.</p>
+      <div class="button-row">
+        <button class="btn btn--secondary" type="button" id="export-btn"><svg class="icon"><use href="#i-download"/></svg> Exportar backup</button>
+        <label class="btn btn--secondary" for="import-input"><svg class="icon"><use href="#i-upload"/></svg> Importar backup</label>
+        <input type="file" id="import-input" accept="application/json,.json" class="sr-only">
+        <button class="btn btn--ghost btn--danger-text" type="button" id="reset-btn"><svg class="icon"><use href="#i-trash"/></svg> Apagar tudo</button>
+      </div>
+      <p class="storage-status" id="storage-status"></p>
+    </section>
+  </dialog>
+
+  <dialog class="dialog dialog--small" id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <form method="dialog">
+      <h2 id="confirm-title">Tem certeza?</h2>
+      <p id="confirm-message"></p>
+      <div class="button-row button-row--end">
+        <button class="btn btn--ghost" type="submit" value="cancel">Cancelar</button>
+        <button class="btn btn--danger" type="submit" value="ok" id="confirm-ok">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Overlay da roleta do "Surpreenda-me" -->
+  <div class="roulette" id="roulette" hidden>
+    <div class="roulette__box" role="status" aria-live="polite">
+      <p class="roulette__label">Sorteando…</p>
+      <p class="roulette__title" id="roulette-title">🎬</p>
+    </div>
+  </div>
+
+  <!-- Região das notificações (toasts) -->
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
+</body>
+</html>
